@@ -1,16 +1,17 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
-public class Placeholder : MonoBehaviour
+public class BattleStarter : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    public int sceneBuildIndex;
 
-    // Update is called once per frame
-    void Update()
+    private void OnTriggerEnter2D(Collider2D collision)
     {
-        
+       if (collision.tag == "Player")
+        {
+
+            SceneManager.LoadScene(sceneBuildIndex, LoadSceneMode.Single);
+
+        }
     }
 }

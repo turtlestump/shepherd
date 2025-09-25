@@ -13,7 +13,7 @@ public class BattleHUD : MonoBehaviour
     {
 
         nameText.text = herd.sheepNames[index];
-        levelText.text = "Lv. " + herd.sheepLevels[index];
+        levelText.text = "<rotate=\"10>Lv. " + herd.sheepLevels[index];
         HP.maxValue = herd.maxHP[index];
         HP.value = herd.currentHP[index];
 
