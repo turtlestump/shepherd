@@ -6,7 +6,7 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using System.Linq;
 
-public enum BattleState { START, PLAYERTURN, ACTPHASE, ACTIONPHASE, ENEMYTURN, WIN, LOSE }
+public enum BattleState { START, PLAYERTURN, ACT, ACTION, ENEMYTURN, WIN, LOSE }
 
 public class Battle : MonoBehaviour
 {
@@ -103,7 +103,7 @@ public class Battle : MonoBehaviour
         if (state != BattleState.PLAYERTURN)
             return;
 
-        state = BattleState.ACTPHASE;
+        state = BattleState.ACT;
 
         battleText.text = "Choose your sheep!";
 
@@ -114,36 +114,42 @@ public class Battle : MonoBehaviour
 
 
     }
-    public void OnSheepButton1()
+    public void OnFleeButton(int sceneBuildIndex)
     {
 
-        if (state != BattleState.ACTPHASE)
+        SceneManager.LoadScene(sceneBuildIndex, LoadSceneMode.Single);
+
+    }
+
+    public void OnSheepButton(int sheep)
+    {
+
+        if (state != BattleState.ACT)
             return;
 
-        // Check size of sheepSelected.
-        if (sheepSelected.Count == 3)
+        if (sheepSelected.Contains(sheep) == false)
         {
 
-            sheepSelected.RemoveAt(0);
-            playerSelections[0].SetActive(false);
+            // Check size of sheepSelected.
+            if (sheepSelected.Count >= 3)
+            {
 
-        }
+                playerSelections[sheepSelected[0] - 1].SetActive(false);
+                sheepSelected.RemoveAt(0);
+                
+            }
 
-        if (sheepSelected.Contains(1) == false)
-        {
-
-            sheepSelected.Add(1);
-
-            playerSelections[0].GetComponent<TMP_Text>().SetText(sheepSelected.Count.ToString());
-            playerSelections[0].SetActive(true);
-
+            playerSelections[sheep - 1].SetActive(true);
+            playerSelections[sheep - 1].GetComponent<TMP_Text>().SetText("S");
+            sheepSelected.Add(sheep);
+            
         }
         else
         {
 
-            sheepSelected.Remove(1);
-            playerSelections[0].SetActive(false);
-
+            playerSelections[sheep - 1].SetActive(false);
+            sheepSelected.Remove(sheep);
+            
         }
 
         // Make GO! Button active
@@ -161,202 +167,13 @@ public class Battle : MonoBehaviour
         }
 
     }
-    public void OnSheepButton2()
-    {
-
-        if (state != BattleState.ACTPHASE)
-            return;
-
-        // Check size of sheepSelected.
-        if (sheepSelected.Count == 3)
-        {
-
-            sheepSelected.RemoveAt(0);
-            playerSelections[0].SetActive(false);
-
-        }
-
-        if (sheepSelected.Contains(2) == false)
-        {
-
-            sheepSelected.Add(2);
-
-            playerSelections[1].GetComponent<TMP_Text>().SetText(sheepSelected.Count.ToString());
-            playerSelections[1].SetActive(true);
-
-        }
-        else
-        {
-
-            sheepSelected.Remove(2);
-            playerSelections[1].SetActive(false);
-
-        }
-
-        // Make GO! Button active
-        if (sheepSelected.Count == 3)
-        {
-
-            goButton.gameObject.SetActive(true);
-
-        }
-        else
-        {
-
-            goButton.gameObject.SetActive(false);
-
-        }
-
-    }
-    public void OnSheepButton3()
-    {
-
-        if (state != BattleState.ACTPHASE)
-            return;
-
-        // Check size of sheepSelected.
-        if (sheepSelected.Count == 3)
-        {
-
-            sheepSelected.RemoveAt(0);
-            playerSelections[0].SetActive(false);
-
-        }
-
-        if (sheepSelected.Contains(3) == false)
-        {
-
-            sheepSelected.Add(3);
-
-            playerSelections[2].GetComponent<TMP_Text>().SetText(sheepSelected.Count.ToString());
-            playerSelections[2].SetActive(true);
-
-        }
-        else
-        {
-
-            sheepSelected.Remove(3);
-            playerSelections[2].SetActive(false);
-
-        }
-
-        // Make GO! Button active
-        if (sheepSelected.Count == 3)
-        {
-
-            goButton.gameObject.SetActive(true);
-
-        }
-        else
-        {
-
-            goButton.gameObject.SetActive(false);
-
-        }
-
-    }
-    public void OnSheepButton4()
-    {
-
-        if (state != BattleState.ACTPHASE)
-            return;
-
-        // Check size of sheepSelected.
-        if (sheepSelected.Count == 3)
-        {
-
-            sheepSelected.RemoveAt(0);
-            playerSelections[0].SetActive(false);
-
-        }
-
-        if (sheepSelected.Contains(4) == false)
-        {
-
-            sheepSelected.Add(4);
-
-            playerSelections[3].GetComponent<TMP_Text>().SetText(sheepSelected.Count.ToString());
-            playerSelections[3].SetActive(true);
-
-        }
-        else
-        {
-
-            sheepSelected.Remove(4);
-            playerSelections[3].SetActive(false);
-
-        }
-
-        // Make GO! Button active
-        if (sheepSelected.Count == 3)
-        {
-
-            goButton.gameObject.SetActive(true);
-
-        }
-        else
-        {
-
-            goButton.gameObject.SetActive(false);
-
-        }
-
-    }
-    public void OnSheepButton5()
-    {
-
-        if (state != BattleState.ACTPHASE)
-            return;
-
-        // Check size of sheepSelected.
-        if (sheepSelected.Count == 3)
-        {
-
-            sheepSelected.RemoveAt(0);
-            playerSelections[0].SetActive(false);
-
-        }
-
-        if (sheepSelected.Contains(5) == false)
-        {
-
-            sheepSelected.Add(5);
-
-            playerSelections[4].GetComponent<TMP_Text>().SetText(sheepSelected.Count.ToString());
-            playerSelections[4].SetActive(true);
-
-        }
-        else
-        {
-
-            sheepSelected.Remove(5);
-            playerSelections[4].SetActive(false);
-
-        }
-
-        // Make GO! Button active
-        if (sheepSelected.Count == 3)
-        {
-
-            goButton.gameObject.SetActive(true);
-
-        }
-        else
-        {
-
-            goButton.gameObject.SetActive(false);
-
-        }
-
-    }
-
     public void OnGoButton()
     {
 
-        if (state != BattleState.ACTPHASE)
+        if (state != BattleState.ACT)
             return;
 
-        state = BattleState.ACTIONPHASE;
+        state = BattleState.ACTION;
         battlePanel.SetActive(false);
         actPanel.SetActive(true);
 
