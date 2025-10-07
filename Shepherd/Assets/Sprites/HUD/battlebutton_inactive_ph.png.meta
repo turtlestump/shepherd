@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      battlebutton_inactive_ph_0: -7122502623394416267
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

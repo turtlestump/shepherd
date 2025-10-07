@@ -6,7 +6,7 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using System.Linq;
 
-public enum BattleState { START, PLAYERTURN, ACT, CHOOSEACTIONS, RESOLVE, ENEMYTURN, WIN, LOSE }
+public enum BattleState { START, PLAYERTURN, ACT, CHOOSEACTIONS, TAMING, RESOLVE, ENEMYTURN, WIN, LOSE }
 public enum SheepAction { NONE, ATTACK, DEFEND, APPEAL }
 
 public class Battle : MonoBehaviour
@@ -24,8 +24,8 @@ public class Battle : MonoBehaviour
     public BattleHUD[] enemyHUDS;
 
     [Header("UI Elements")]
-    public Button[] playerSheep;      // buttons for player's sheep (index 0..4)
-    public Button[] enemySheep;       // buttons for enemy's sheep (index 0..4)
+    public Button[] playerSheep;
+    public Button[] enemySheep;
     public GameObject[] playerSelections;
     public TMP_Text battleText;
     public Button actButton;
@@ -47,9 +47,9 @@ public class Battle : MonoBehaviour
     // Represents one sheep’s action for the turn
     public class SheepCommand
     {
-        public int sheepIndex;   // 0-based index into herd arrays
+        public int sheepIndex;
         public SheepAction action;
-        public int targetIndex;  // 0-based index into enemy/player arrays
+        public int targetIndex;
         public int speed;
         public bool isPlayer;
     }
@@ -57,7 +57,7 @@ public class Battle : MonoBehaviour
     private List<SheepCommand> playerCommands = new List<SheepCommand>();
     private int currentActionIndex = 0;
 
-    // --- Target selection helpers ---
+    // Target selection helpers
     private bool awaitingTarget = false;
     private SheepCommand pendingAttack = null;
 
@@ -69,7 +69,6 @@ public class Battle : MonoBehaviour
 
     IEnumerator StartBattle()
     {
-        // Disable buttons initially
         actButton.interactable = false;
         itemsButton.interactable = false;
         tameButton.interactable = false;
@@ -93,22 +92,16 @@ public class Battle : MonoBehaviour
             enemyHUDS[i].SetHUD(enemyHerd, i);
         }
 
-        // Ensure buttons reflect initial HP & state
         RefreshSheepButtons();
-
         yield return new WaitForSeconds(2f);
 
         state = BattleState.PLAYERTURN;
-
-        // update buttons now that we are in PLAYERTURN
         RefreshSheepButtons();
-
         PlayerTurn();
     }
 
     void PlayerTurn()
     {
-        // Update UI and ensure buttons reflect alive/dead
         RefreshSheepButtons();
 
         battleText.text = "Select an action:";
@@ -130,21 +123,18 @@ public class Battle : MonoBehaviour
         tameButton.interactable = false;
         fleeButton.interactable = false;
 
-        // Update the sheep buttons now that we're in ACT so live sheep become clickable
         RefreshSheepButtons();
     }
-
 
     public void OnSheepButton(int sheep)
     {
         if (state != BattleState.ACT)
             return;
 
-        // 🛑 Ignore if sheep is dead
-        if (playerHerd.currentHP[sheep - 1] <= 0)
+        if (playerHerd.sheep[sheep - 1].currentHP <= 0)
             return;
 
-        int livingSheepCount = playerHerd.currentHP.Count(hp => hp > 0);
+        int livingSheepCount = playerHerd.sheep.Count(s => s.currentHP > 0);
         int maxSelectable = Mathf.Min(3, livingSheepCount);
 
         if (!sheepSelected.Contains(sheep))
@@ -174,8 +164,7 @@ public class Battle : MonoBehaviour
         if (state != BattleState.ACT)
             return;
 
-        // If player has no live sheep, don't proceed
-        if (playerHerd.currentHP.All(h => h <= 0))
+        if (playerHerd.sheep.All(s => s.currentHP <= 0))
         {
             battleText.text = "No sheep left!";
             return;
@@ -184,12 +173,10 @@ public class Battle : MonoBehaviour
         state = BattleState.CHOOSEACTIONS;
         battlePanel.SetActive(false);
         actPanel.SetActive(true);
-        battleText.text = $"Choose actions for your sheep!";
+        battleText.text = "Choose actions for your sheep!";
 
         currentActionIndex = 0;
         playerCommands.Clear();
-
-        // Ensure enemy buttons are disabled until needed
         EnableEnemyButtonsForTargeting(false);
 
         ShowActionPrompt();
@@ -197,10 +184,8 @@ public class Battle : MonoBehaviour
 
     void ShowActionPrompt()
     {
-        // If we've chosen actions for all selected sheep, finalize
         if (currentActionIndex >= sheepSelected.Count)
         {
-            // ✅ All actions chosen → switch panels and start battle
             actPanel.SetActive(false);
             battlePanel.SetActive(true);
             battleText.text = "The battle begins!";
@@ -209,10 +194,9 @@ public class Battle : MonoBehaviour
         }
 
         int sheepID = sheepSelected[currentActionIndex];
-        string sheepName = playerHerd.sheepNames[sheepID - 1];
+        string sheepName = playerHerd.sheep[sheepID - 1].name;
         battleText.text = $"{sheepName} — Choose an action:";
 
-        // Ensure action buttons are enabled (unless awaitingTarget)
         if (!awaitingTarget)
         {
             attackButton.interactable = true;
@@ -220,22 +204,21 @@ public class Battle : MonoBehaviour
             appealButton.interactable = true;
         }
 
-        // Make sure enemy target buttons are disabled by default
         EnableEnemyButtonsForTargeting(false);
     }
 
     public void OnAttackButton() => BeginAttackChoice();
     public void OnDefendButton() => ChooseActionImmediate(SheepAction.DEFEND);
-    public void OnAppealButton() => ChooseActionImmediate(SheepAction.APPEAL);
+    public void OnAppealButton() => BeginAppealChoice();
 
-    // When player chooses DEFEND or APPEAL we add the command immediately
+
     void ChooseActionImmediate(SheepAction action)
     {
         if (state != BattleState.CHOOSEACTIONS || awaitingTarget)
             return;
 
         int sheepID = sheepSelected[currentActionIndex];
-        int speed = playerHerd.sheepLevels[sheepID - 1]; // temporary speed proxy
+        int speed = playerHerd.sheep[sheepID - 1].speed;
 
         SheepCommand cmd = new SheepCommand
         {
@@ -248,22 +231,20 @@ public class Battle : MonoBehaviour
 
         playerCommands.Add(cmd);
 
-        // Feedback & advance
-        string sheepName = playerHerd.sheepNames[sheepID - 1];
+        string sheepName = playerHerd.sheep[sheepID - 1].name;
         battleText.text = $"{sheepName} will {action}!";
-        currentActionIndex++;
 
+        currentActionIndex++;
         StartCoroutine(NextActionPromptDelay());
     }
 
-    // Begin target-selection flow for attack
     void BeginAttackChoice()
     {
         if (state != BattleState.CHOOSEACTIONS || awaitingTarget)
             return;
 
         int sheepID = sheepSelected[currentActionIndex];
-        int speed = playerHerd.sheepLevels[sheepID - 1]; // use level until a speed stat is added
+        int speed = playerHerd.sheep[sheepID - 1].speed;
 
         pendingAttack = new SheepCommand
         {
@@ -276,44 +257,79 @@ public class Battle : MonoBehaviour
 
         awaitingTarget = true;
 
-        // Disable other action buttons until target chosen
         attackButton.interactable = false;
         defendButton.interactable = false;
         appealButton.interactable = false;
 
-        // Enable only live enemy buttons so player can choose a target
         EnableEnemyButtonsForTargeting(true);
-
         battleText.text = "Select a target!";
     }
 
-    // Called by enemy buttons' OnClick (pass index 0..4)
-    // e.g. in the Inspector: EnemyButton.OnClick -> Battle.OnEnemyTargetSelected (int) with correct index
+    void BeginAppealChoice()
+    {
+        if (state != BattleState.CHOOSEACTIONS || awaitingTarget)
+            return;
+
+        int sheepID = sheepSelected[currentActionIndex];
+
+        pendingAttack = new SheepCommand
+        {
+            sheepIndex = sheepID - 1,
+            action = SheepAction.APPEAL,
+            targetIndex = -1,
+            speed = playerHerd.sheep[sheepID - 1].speed,
+            isPlayer = true
+        };
+
+        awaitingTarget = true;
+
+        attackButton.interactable = false;
+        defendButton.interactable = false;
+        appealButton.interactable = false;
+
+        // In this case, target is **enemy sheep**
+        EnableEnemyButtonsForTargeting(true);
+        battleText.text = "Select a sheep to appeal to!";
+    }
+
     public void OnEnemyTargetSelected(int targetIndex)
     {
         if (!awaitingTarget || pendingAttack == null || state != BattleState.CHOOSEACTIONS)
             return;
 
-        // Ignore if target dead
-        if (enemyHerd.currentHP[targetIndex] <= 0)
-            return;
+        Sheep source = playerHerd.sheep[pendingAttack.sheepIndex];
 
-        // Lock target and add to commands
-        pendingAttack.targetIndex = targetIndex;
-        playerCommands.Add(pendingAttack);
+        if (pendingAttack.action == SheepAction.ATTACK)
+        {
+            if (enemyHerd.sheep[targetIndex].currentHP <= 0)
+                return;
 
-        string sheepName = playerHerd.sheepNames[pendingAttack.sheepIndex];
-        string enemyName = enemyHerd.sheepNames[targetIndex];
-        battleText.text = $"{sheepName} will attack {enemyName}!";
+            pendingAttack.targetIndex = targetIndex;
+            playerCommands.Add(pendingAttack);
 
-        // Reset pending state BEFORE the coroutine is called
+            string enemyName = enemyHerd.sheep[targetIndex].name;
+            battleText.text = $"{source.name} will attack {enemyName}!";
+        }
+        else if (pendingAttack.action == SheepAction.APPEAL)
+        {
+            if (enemyHerd.sheep[targetIndex].currentHP <= 0)
+                return;
+
+            // Execute appeal immediately
+            enemyHerd.Appeal(enemyHerd, targetIndex, source);
+
+            string enemyName = enemyHerd.sheep[targetIndex].name;
+            battleText.text = $"{source.name} appealed to {enemyName}!";
+        }
+
         pendingAttack = null;
         awaitingTarget = false;
-
-        // Disable target buttons again
         EnableEnemyButtonsForTargeting(false);
 
-        // Advance to next sheep action (UI will re-enable buttons next frame)
+        attackButton.interactable = true;
+        defendButton.interactable = true;
+        appealButton.interactable = true;
+
         currentActionIndex++;
         StartCoroutine(NextActionPromptDelay());
     }
@@ -326,21 +342,15 @@ public class Battle : MonoBehaviour
 
     IEnumerator ResolveTurn()
     {
-        // Make sure player can't click enemy buttons during resolution
         EnableEnemyButtonsForTargeting(false);
-
         actPanel.SetActive(false);
         battleText.text = "Executing actions...";
         yield return new WaitForSeconds(1f);
 
-        // Get AI actions
         List<SheepCommand> allCommands = new List<SheepCommand>(playerCommands);
         allCommands.AddRange(MockEnemyActions());
-
-        // Sort by speed descending
         allCommands = allCommands.OrderByDescending(c => c.speed).ToList();
 
-        // Alternate actions with visible updates
         foreach (SheepCommand cmd in allCommands)
         {
             if (cmd.isPlayer)
@@ -349,18 +359,12 @@ public class Battle : MonoBehaviour
                 yield return ExecuteEnemyAction(cmd);
 
             yield return new WaitForSeconds(0.75f);
-
-            // Stop if battle ends early
             if (CheckBattleEnd()) yield break;
         }
 
-        // Wait a second before starting next turn
         yield return new WaitForSeconds(1f);
-
-        // Reset selections & re-enable buttons for next turn
         ResetSelections();
 
-        // Return to player turn
         state = BattleState.PLAYERTURN;
         battlePanel.SetActive(true);
         PlayerTurn();
@@ -368,20 +372,13 @@ public class Battle : MonoBehaviour
 
     void ResetSelections()
     {
-        // Clear player selections and reset highlights
         sheepSelected.Clear();
-        for (int i = 0; i < playerSelections.Length; i++)
-        {
-            playerSelections[i].SetActive(false);
-        }
+        foreach (var s in playerSelections)
+            s.SetActive(false);
 
-        // Disable GO button until picks again
         goButton.gameObject.SetActive(false);
-
-        // Re-enable alive sheep buttons only
         RefreshSheepButtons();
 
-        // Clear pending states
         awaitingTarget = false;
         pendingAttack = null;
         playerCommands.Clear();
@@ -390,8 +387,8 @@ public class Battle : MonoBehaviour
 
     bool CheckBattleEnd()
     {
-        bool allEnemiesDown = enemyHerd.currentHP.All(hp => hp <= 0);
-        bool allPlayersDown = playerHerd.currentHP.All(hp => hp <= 0);
+        bool allEnemiesDown = enemyHerd.AllDown();
+        bool allPlayersDown = playerHerd.AllDown();
 
         if (allEnemiesDown)
         {
@@ -414,47 +411,31 @@ public class Battle : MonoBehaviour
     IEnumerator EndBattle()
     {
         yield return new WaitForSeconds(2f);
-        // You can add scene transitions or restart here if desired.
     }
 
-    // --- Enemy AI: choose up to N unique living enemies to act (N = min(3, aliveEnemiesCount)) ---
     List<SheepCommand> MockEnemyActions()
     {
         List<SheepCommand> cmds = new List<SheepCommand>();
+        List<int> aliveEnemies = enemyHerd.GetAliveIndices();
+        List<int> alivePlayers = playerHerd.GetAliveIndices();
 
-        // Get list of alive enemy sheep (indices)
-        List<int> aliveEnemies = Enumerable.Range(0, enemyHerd.currentHP.Length)
-                                           .Where(i => enemyHerd.currentHP[i] > 0)
-                                           .ToList();
-
-        // Get list of alive player sheep (for targets)
-        List<int> alivePlayers = Enumerable.Range(0, playerHerd.currentHP.Length)
-                                           .Where(i => playerHerd.currentHP[i] > 0)
-                                           .ToList();
-
-        // If no alive players, stop battle early
         if (alivePlayers.Count == 0 || aliveEnemies.Count == 0)
             return cmds;
 
-        // Select up to 3 living enemies to act (unique)
         int actionsToTake = Mathf.Min(3, aliveEnemies.Count);
-
-        // Shuffle aliveEnemies then take first actionsToTake to avoid repeated same attacker
         aliveEnemies = aliveEnemies.OrderBy(x => Random.value).ToList();
 
         for (int i = 0; i < actionsToTake; i++)
         {
             int sheepID = aliveEnemies[i];
-
             SheepCommand cmd = new SheepCommand
             {
                 sheepIndex = sheepID,
-                action = SheepAction.ATTACK, // can be expanded later
+                action = SheepAction.ATTACK,
                 targetIndex = alivePlayers[Random.Range(0, alivePlayers.Count)],
-                speed = enemyHerd.sheepLevels[sheepID], // temporary proxy for speed
+                speed = enemyHerd.sheep[sheepID].speed,
                 isPlayer = false
             };
-
             cmds.Add(cmd);
         }
 
@@ -463,124 +444,76 @@ public class Battle : MonoBehaviour
 
     IEnumerator ExecutePlayerAction(SheepCommand cmd)
     {
-        // Skip if attacker died before their action
-        if (playerHerd.currentHP[cmd.sheepIndex] <= 0)
-            yield break;
-
-        // If attacking, ensure there's a live enemy target (retarget if needed)
-        if (cmd.action == SheepAction.ATTACK)
-        {
-            // If target died, retarget to a live enemy
-            if (cmd.targetIndex < 0 || enemyHerd.currentHP[cmd.targetIndex] <= 0)
-            {
-                List<int> aliveEnemies = Enumerable.Range(0, enemyHerd.currentHP.Length)
-                                                   .Where(i => enemyHerd.currentHP[i] > 0)
-                                                   .ToList();
-
-                if (aliveEnemies.Count == 0)
-                {
-                    yield break; // no targets
-                }
-
-                cmd.targetIndex = aliveEnemies[Random.Range(0, aliveEnemies.Count)];
-            }
-        }
-
-        string name = playerHerd.sheepNames[cmd.sheepIndex];
-        string actionText = cmd.action == SheepAction.ATTACK ? $"attacked {enemyHerd.sheepNames[cmd.targetIndex]}" : cmd.action.ToString();
-        battleText.text = $"{name} {actionText}!";
-        yield return new WaitForSeconds(1.2f);
+        Sheep attacker = playerHerd.sheep[cmd.sheepIndex];
+        if (attacker.currentHP <= 0) yield break;
 
         switch (cmd.action)
         {
             case SheepAction.ATTACK:
-                int damage = playerHerd.sheepDamage[cmd.sheepIndex];
-                enemyHerd.currentHP[cmd.targetIndex] = Mathf.Max(0, enemyHerd.currentHP[cmd.targetIndex] - damage);
-                enemyHUDS[cmd.targetIndex].SetHP(enemyHerd.currentHP[cmd.targetIndex]);
-
-                // Disable enemy button if it's dead
-                if (enemyHerd.currentHP[cmd.targetIndex] <= 0)
-                    enemySheep[cmd.targetIndex].interactable = false;
+                Sheep target = enemyHerd.sheep[cmd.targetIndex];
+                int damage = playerHerd.damage[cmd.sheepIndex];
+                enemyHerd.TakeDamage(cmd.targetIndex, damage);
+                enemyHUDS[cmd.targetIndex].SetHP(target.currentHP);
+                battleText.text = $"{attacker.name} attacked {target.name}!";
                 break;
 
             case SheepAction.DEFEND:
-                // TODO: implement defend mechanics (e.g., reduce damage next hit)
+                attacker.defending = true;
+                battleText.text = $"{attacker.name} is defending!";
                 break;
 
             case SheepAction.APPEAL:
-                int heal = 5;
-                playerHerd.currentHP[cmd.sheepIndex] = Mathf.Min(playerHerd.maxHP[cmd.sheepIndex], playerHerd.currentHP[cmd.sheepIndex] + heal);
-                playerHUDS[cmd.sheepIndex].SetHP(playerHerd.currentHP[cmd.sheepIndex]);
+                int heal = 5 + attacker.charm / 2;
+                attacker.currentHP = Mathf.Min(attacker.maxHP, attacker.currentHP + heal);
+                playerHUDS[cmd.sheepIndex].SetHP(attacker.currentHP);
+                battleText.text = $"{attacker.name} appealed and recovered {heal} HP!";
                 break;
         }
 
-        // refresh buttons in case HP changed
+        yield return new WaitForSeconds(1.2f);
         RefreshSheepButtons();
     }
 
     IEnumerator ExecuteEnemyAction(SheepCommand cmd)
     {
-        // Skip dead attackers
-        if (enemyHerd.currentHP[cmd.sheepIndex] <= 0)
-            yield break;
+        Sheep attacker = enemyHerd.sheep[cmd.sheepIndex];
+        if (attacker.currentHP <= 0) yield break;
 
-        // Skip if all players are dead
-        if (playerHerd.currentHP.All(hp => hp <= 0))
-            yield break;
-
-        // If target died before execution, retarget
-        if (cmd.action == SheepAction.ATTACK && (cmd.targetIndex < 0 || playerHerd.currentHP[cmd.targetIndex] <= 0))
-        {
-            List<int> alivePlayers = Enumerable.Range(0, playerHerd.currentHP.Length)
-                                               .Where(i => playerHerd.currentHP[i] > 0)
-                                               .ToList();
-
-            if (alivePlayers.Count == 0)
-                yield break;
-
-            cmd.targetIndex = alivePlayers[Random.Range(0, alivePlayers.Count)];
-        }
-
-        string name = enemyHerd.sheepNames[cmd.sheepIndex];
-        string actionText = cmd.action == SheepAction.ATTACK ? $"attacked {playerHerd.sheepNames[cmd.targetIndex]}" : cmd.action.ToString();
-        battleText.text = $"{name} {actionText}!";
-        yield return new WaitForSeconds(1.2f);
+        Sheep target = playerHerd.sheep[cmd.targetIndex];
+        if (target.currentHP <= 0) yield break;
 
         switch (cmd.action)
         {
             case SheepAction.ATTACK:
-                int damage = enemyHerd.sheepDamage[cmd.sheepIndex];
-                playerHerd.currentHP[cmd.targetIndex] = Mathf.Max(0, playerHerd.currentHP[cmd.targetIndex] - damage);
-                playerHUDS[cmd.targetIndex].SetHP(playerHerd.currentHP[cmd.targetIndex]);
-
-                // Disable button if target dies
-                if (playerHerd.currentHP[cmd.targetIndex] <= 0)
-                    playerSheep[cmd.targetIndex].interactable = false;
-                break;
-
-            case SheepAction.DEFEND:
-                // TODO: implement defend
+                int damage = enemyHerd.damage[cmd.sheepIndex];
+                if (target.defending)
+                {
+                    damage /= 2;
+                    target.defending = false;
+                }
+                target.currentHP = Mathf.Max(0, target.currentHP - damage);
+                playerHUDS[cmd.targetIndex].SetHP(target.currentHP);
+                battleText.text = $"{attacker.name} attacked {target.name}!";
                 break;
 
             case SheepAction.APPEAL:
-                int heal = 5;
-                enemyHerd.currentHP[cmd.sheepIndex] = Mathf.Min(enemyHerd.maxHP[cmd.sheepIndex], enemyHerd.currentHP[cmd.sheepIndex] + heal);
-                enemyHUDS[cmd.sheepIndex].SetHP(enemyHerd.currentHP[cmd.sheepIndex]);
+                int heal = 5 + attacker.charm / 2;
+                attacker.currentHP = Mathf.Min(attacker.maxHP, attacker.currentHP + heal);
+                enemyHUDS[cmd.sheepIndex].SetHP(attacker.currentHP);
                 break;
         }
 
+        yield return new WaitForSeconds(1.2f);
         RefreshSheepButtons();
     }
 
-    // Make player/enemy buttons interactable only if that sheep is alive.
     void RefreshSheepButtons()
     {
         if (playerHerd != null)
         {
             for (int i = 0; i < playerSheep.Length; i++)
             {
-                // Player sheep selection buttons should only be interactable if alive and we're in selection phase
-                bool alive = playerHerd.currentHP[i] > 0;
+                bool alive = playerHerd.sheep[i].currentHP > 0;
                 playerSheep[i].interactable = alive && state == BattleState.ACT;
             }
         }
@@ -589,28 +522,120 @@ public class Battle : MonoBehaviour
         {
             for (int i = 0; i < enemySheep.Length; i++)
             {
-                bool alive = enemyHerd.currentHP[i] > 0;
-                // Enemy buttons are normally disabled outside of targeting mode
+                bool alive = enemyHerd.sheep[i].currentHP > 0;
                 enemySheep[i].interactable = false;
-                // If we explicitly enable them for targeting, the caller will set them to true
             }
         }
     }
 
-    // Enable/disable enemy buttons for player target selection. Only alive enemies become interactable.
     void EnableEnemyButtonsForTargeting(bool enable)
     {
         if (enemyHerd == null || enemySheep == null) return;
 
         for (int i = 0; i < enemySheep.Length; i++)
         {
-            bool alive = enemyHerd.currentHP[i] > 0;
+            bool alive = enemyHerd.sheep[i].currentHP > 0;
             enemySheep[i].interactable = enable && alive;
         }
     }
 
-    public void OnFleeButton(int sceneBuildIndex)
+    // Called by Tame button
+    public void OnTameButton()
     {
-        SceneManager.LoadScene(sceneBuildIndex, LoadSceneMode.Single);
+        if (state != BattleState.PLAYERTURN)
+            return;
+
+        List<int> aliveEnemies = enemyHerd.GetAliveIndices();
+        if (aliveEnemies.Count == 0)
+        {
+            battleText.text = "No sheep to tame!";
+            return;
+        }
+
+        state = BattleState.TAMING;
+        battleText.text = "Select an enemy sheep to tame!";
+        EnableEnemyButtonsForTargeting(true);
+    }
+
+    // Called when an enemy sheep button is clicked
+    public void OnEnemyTameTarget(int targetIndex)
+    {
+        if (state != BattleState.TAMING)
+            return;
+
+        // Roll to tame the enemy sheep
+        bool success = enemyHerd.Tame(enemyHerd, targetIndex); // target is self-contained
+
+        if (success)
+            battleText.text = $"You tamed {enemyHerd.sheep[targetIndex].name}!";
+        else
+            battleText.text = $"{enemyHerd.sheep[targetIndex].name} resisted being tamed!";
+
+        // Disable buttons
+        EnableEnemyButtonsForTargeting(false);
+
+        // Wait a moment so the player can read the result
+        StartCoroutine(PostTameEnemyTurn());
+    }
+
+    private IEnumerator PostTameEnemyTurn()
+    {
+        yield return new WaitForSeconds(1.5f);
+
+        // Start enemy turn
+        state = BattleState.ENEMYTURN;
+        StartCoroutine(EnemyTurn());
+    }
+
+
+    public void OnFleeButton()
+    {
+        if (state != BattleState.PLAYERTURN)
+            return;
+
+        state = BattleState.RESOLVE; // temporary block actions
+        battleText.text = "Attempting to flee...";
+
+        int fleeChance = 50; // Base chance
+        int totalEnemySpeed = enemyHerd.sheep.Where(s => s.currentHP > 0).Sum(s => s.speed);
+        fleeChance = Mathf.Clamp(fleeChance - totalEnemySpeed / 5, 5, 95);
+
+        int roll = Random.Range(1, 101);
+
+        if (roll <= fleeChance)
+        {
+            battleText.text = "You successfully fled!";
+            StartCoroutine(EndBattle()); // End battle early
+        }
+        else
+        {
+            battleText.text = "Failed to flee!";
+            StartCoroutine(FailedFleeDelay());
+        }
+    }
+
+    IEnumerator FailedFleeDelay()
+    {
+        yield return new WaitForSeconds(1.5f);
+        state = BattleState.ENEMYTURN;
+        StartCoroutine(EnemyTurn());
+    }
+
+    // Coroutine for enemy actions after a turn-ending action (tame/flee)
+    IEnumerator EnemyTurn()
+    {
+        List<SheepCommand> enemyActions = MockEnemyActions();
+        enemyActions = enemyActions.OrderByDescending(c => c.speed).ToList();
+
+        foreach (var cmd in enemyActions)
+        {
+            yield return ExecuteEnemyAction(cmd);
+            if (CheckBattleEnd()) yield break;
+            yield return new WaitForSeconds(0.75f);
+        }
+
+        state = BattleState.PLAYERTURN;
+        battlePanel.SetActive(true);
+        PlayerTurn();
     }
 }

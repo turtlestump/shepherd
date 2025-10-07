@@ -12,8 +12,8 @@ public class BattleHUD : MonoBehaviour
     public void SetHUD(Herd herd, int index)
     {
 
-        nameText.text = herd.sheepNames[index];
-        levelText.text = "<rotate=\"10>Lv. " + herd.sheepLevels[index];
+        nameText.text = herd.names[index];
+        levelText.text = "<rotate=\"10>Lv. " + herd.levels[index];
         HP.maxValue = herd.maxHP[index];
         HP.value = herd.currentHP[index];
 
