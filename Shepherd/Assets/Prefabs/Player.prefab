@@ -94,7 +94,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c369f0ec6d3530949be5539adab536c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  name: Sheep 5
+  name: PSheep 5
   level: 3
   strength: 2
   resolve: 2
@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c369f0ec6d3530949be5539adab536c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  name: Sheep 4
+  name: PSheep 4
   level: 3
   strength: 2
   resolve: 2
@@ -202,7 +202,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c369f0ec6d3530949be5539adab536c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  name: Sheep 1
+  name: PSheep 1
   level: 3
   strength: 3
   resolve: 3
@@ -256,7 +256,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c369f0ec6d3530949be5539adab536c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  name: Sheep 3
+  name: PSheep 3
   level: 3
   strength: 2
   resolve: 5
@@ -310,7 +310,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c369f0ec6d3530949be5539adab536c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  name: Sheep 2
+  name: PSheep 2
   level: 3
   strength: 5
   resolve: 2
