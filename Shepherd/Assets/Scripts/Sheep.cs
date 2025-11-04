@@ -41,3 +41,33 @@ public class Sheep : MonoBehaviour
     }
 
 }
+
+public class SheepData
+{
+
+    public string name;
+    public int level;
+    public int strength;
+    public int resolve;
+    public int charm;
+    public int speed;
+    public int maxHP;
+    public int currentHP;
+    public bool tamed;
+
+    public SheepData(Sheep s)
+    {
+
+        name = s.name;
+        level = s.level;
+        strength = s.strength;
+        resolve = s.resolve;
+        charm = s.charm;
+        speed = s.speed;
+        maxHP = s.maxHP;
+        currentHP = s.currentHP;
+        tamed = s.tamed;
+
+    }
+
+}

@@ -6,6 +6,7 @@ public class Herd : MonoBehaviour
 {
     // Your list of Sheep instances
     public List<Sheep> sheep = new List<Sheep>();
+    public List<Sheep> tamedSheep = new List<Sheep>();
 
     void Awake()
     {
@@ -81,11 +82,7 @@ public class Herd : MonoBehaviour
         {
             target.tamed = true;
             target.currentHP = 0;
-            Debug.Log($"You tamed {target.name}!");
-        }
-        else
-        {
-            Debug.Log($"{target.name} resisted being tamed!");
+            tamedSheep.Add(target);
         }
 
         return success;
@@ -103,5 +100,24 @@ public class Herd : MonoBehaviour
     public bool AllDown()
     {
         return sheep.All(s => s.currentHP <= 0 || s.tamed);
+    }
+
+    public bool AllUntamedEnemiesDownOrTamed()
+    {
+        return sheep.All(s => s.currentHP <= 0 || tamedSheep.Contains(s));
+    }
+
+    public Sheep AddSheepFromData(SheepData data)
+    {
+
+        Sheep s = new Sheep(data.name, data.level, data.strength, data.resolve, data.charm, data.speed)
+        {
+            maxHP = data.maxHP,
+            currentHP = data.currentHP,
+            tamed = data.tamed
+        };
+        sheep.Add(s);
+        return s;
+
     }
 }

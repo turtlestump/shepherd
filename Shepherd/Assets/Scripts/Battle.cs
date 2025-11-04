@@ -5,25 +5,24 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
 using System.Linq;
+using UnityEngine.InputSystem;
 
 public enum BattleState { START, PLAYERTURN, ACT, CHOOSEACTIONS, TAMING, RESOLVE, ENEMYTURN, WIN, LOSE }
 public enum SheepAction { NONE, ATTACK, DEFEND, APPEAL }
 
 public class Battle : MonoBehaviour
 {
-    [Header("Prefabs")]
+    // Prefab references
     public GameObject player;
     public GameObject enemy;
 
-    [Header("Herds")]
+    // Object references
     private Herd playerHerd;
     private Herd enemyHerd;
 
-    [Header("HUDs")]
+    // UI Elements
     public BattleHUD[] playerHUDS;
     public BattleHUD[] enemyHUDS;
-
-    [Header("UI Elements")]
     public Button[] playerSheep;
     public Button[] enemySheep;
     public GameObject[] playerSelections;
@@ -36,13 +35,15 @@ public class Battle : MonoBehaviour
     public GameObject battlePanel;
     public GameObject actPanel;
 
-    [Header("Action Buttons")]
+    // Action buttons
     public Button attackButton;
     public Button defendButton;
     public Button appealButton;
 
     private BattleState state;
     private List<int> sheepSelected = new List<int>();
+
+    private bool transitioning = false;
 
     // Represents one sheep’s action for the turn
     public class SheepCommand
@@ -69,6 +70,7 @@ public class Battle : MonoBehaviour
 
     IEnumerator StartBattle()
     {
+        // Disable buttons at start
         actButton.interactable = false;
         itemsButton.interactable = false;
         tameButton.interactable = false;
@@ -76,24 +78,58 @@ public class Battle : MonoBehaviour
         goButton.gameObject.SetActive(false);
         actPanel.SetActive(false);
 
-        // Instantiate player & enemy
+        // Instantiate player & enemy herds
         GameObject playerObject = Instantiate(player);
         playerHerd = playerObject.GetComponent<Herd>();
 
         GameObject enemyObject = Instantiate(enemy);
         enemyHerd = enemyObject.GetComponent<Herd>();
 
-        battleText.text = "A wild herd appeared!";
+        // Load player herd dynamically from GameManager
+        playerHerd.sheep.Clear();
+        foreach (var sData in GameManager.Instance.playerHerd)
+            playerHerd.AddSheepFromData(sData);
 
-        // Setup HUDs
-        for (int i = 0; i < 5; i++)
+        // Restore player sheep HP for testing
+        foreach (var sheep in playerHerd.sheep)
         {
-            playerHUDS[i].SetHUD(playerHerd, i);
-            enemyHUDS[i].SetHUD(enemyHerd, i);
+            sheep.currentHP = sheep.maxHP;
+        }
+
+        // Limit enemy herd to 1–3 sheep safely
+        int enemyCount = enemyHerd.sheep.Count;
+        if (enemyCount > 1)
+        {
+            int minEnemy = 1;
+            int maxEnemy = Mathf.Min(3, enemyCount);
+            enemyCount = Random.Range(minEnemy, maxEnemy + 1); // Random.Range max is exclusive for ints, so +1
+            enemyHerd.sheep = enemyHerd.sheep.Take(enemyCount).ToList();
+        }
+
+        // Setup player HUD/buttons safely
+        int playerCount = playerHerd.sheep.Count;
+        for (int i = 0; i < playerHUDS.Length; i++)
+        {
+            bool active = i < playerCount;
+            playerHUDS[i].gameObject.SetActive(active);
+            playerSheep[i].gameObject.SetActive(active);
+            if (active)
+                playerHUDS[i].SetHUD(playerHerd, i);
+        }
+
+        // Setup enemy HUD/buttons safely
+        int enemyCountSafe = enemyHerd.sheep.Count;
+        for (int i = 0; i < enemyHUDS.Length; i++)
+        {
+            bool active = i < enemyCountSafe;
+            enemyHUDS[i].gameObject.SetActive(active);
+            enemySheep[i].gameObject.SetActive(active);
+            if (active)
+                enemyHUDS[i].SetHUD(enemyHerd, i);
         }
 
         RefreshSheepButtons();
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(1f);
 
         state = BattleState.PLAYERTURN;
         RefreshSheepButtons();
@@ -103,6 +139,7 @@ public class Battle : MonoBehaviour
     void PlayerTurn()
     {
         RefreshSheepButtons();
+        goButton.interactable = true;
 
         battleText.text = "Select an action:";
         actButton.interactable = true;
@@ -131,7 +168,13 @@ public class Battle : MonoBehaviour
         if (state != BattleState.ACT)
             return;
 
-        if (playerHerd.sheep[sheep - 1].currentHP <= 0)
+        int sheepIndex = sheep - 1; // Convert to 0-based index
+
+        // Safety check: ensure the index is within the player's herd
+        if (sheepIndex < 0 || sheepIndex >= playerHerd.sheep.Count)
+            return;
+
+        if (playerHerd.sheep[sheepIndex].currentHP <= 0)
             return;
 
         int livingSheepCount = playerHerd.sheep.Count(s => s.currentHP > 0);
@@ -142,25 +185,38 @@ public class Battle : MonoBehaviour
             if (sheepSelected.Count >= maxSelectable)
             {
                 int oldSheep = sheepSelected[0];
-                playerSelections[oldSheep - 1].SetActive(false);
+                int oldIndex = oldSheep - 1;
+
+                if (oldIndex >= 0 && oldIndex < playerSelections.Length)
+                    playerSelections[oldIndex].SetActive(false);
+
                 sheepSelected.RemoveAt(0);
             }
 
-            playerSelections[sheep - 1].SetActive(true);
-            playerSelections[sheep - 1].GetComponent<TMP_Text>().SetText("S");
+            if (sheepIndex >= 0 && sheepIndex < playerSelections.Length)
+            {
+                playerSelections[sheepIndex].SetActive(true);
+                playerSelections[sheepIndex].GetComponent<TMP_Text>().SetText("S");
+            }
+
             sheepSelected.Add(sheep);
         }
         else
         {
-            playerSelections[sheep - 1].SetActive(false);
+            if (sheepIndex >= 0 && sheepIndex < playerSelections.Length)
+                playerSelections[sheepIndex].SetActive(false);
+
             sheepSelected.Remove(sheep);
         }
 
+        // Enable the Go button if the player has selected the allowed number of sheep
         goButton.gameObject.SetActive(sheepSelected.Count == maxSelectable);
     }
 
     public void OnGoButton()
     {
+        goButton.interactable = false;
+
         if (state != BattleState.ACT)
             return;
 
@@ -184,6 +240,16 @@ public class Battle : MonoBehaviour
 
     void ShowActionPrompt()
     {
+
+        // Safety reset
+        awaitingTarget = false;
+        pendingAttack = null;
+        EnableEnemyButtonsForTargeting(false);
+
+        attackButton.interactable = true;
+        defendButton.interactable = true;
+        appealButton.interactable = true;
+
         if (currentActionIndex >= sheepSelected.Count)
         {
             actPanel.SetActive(false);
@@ -294,16 +360,29 @@ public class Battle : MonoBehaviour
 
     public void OnEnemyTargetSelected(int targetIndex)
     {
-        if (!awaitingTarget || pendingAttack == null || state != BattleState.CHOOSEACTIONS)
+        // Safety checks
+        if (state != BattleState.CHOOSEACTIONS || !awaitingTarget || pendingAttack == null)
+        {
+            Debug.LogWarning($"OnEnemyTargetSelected ignored: state={state}, awaitingTarget={awaitingTarget}, pendingAttackNull={pendingAttack == null}");
+            return; // ignore stray clicks (don't alter UI because we aren't in target mode)
+        }
+
+        // Validate index bounds and that target is alive
+        if (targetIndex < 0 || targetIndex >= enemyHerd.sheep.Count || enemyHerd.sheep[targetIndex].currentHP <= 0)
+        {
+            battleText.text = "Invalid target — choose a living sheep!";
+            // Keep targeting UI active so the player can pick again
+            EnableEnemyButtonsForTargeting(true);
+            attackButton.interactable = false;
+            defendButton.interactable = false;
+            appealButton.interactable = false;
             return;
+        }
 
         Sheep source = playerHerd.sheep[pendingAttack.sheepIndex];
 
         if (pendingAttack.action == SheepAction.ATTACK)
         {
-            if (enemyHerd.sheep[targetIndex].currentHP <= 0)
-                return;
-
             pendingAttack.targetIndex = targetIndex;
             playerCommands.Add(pendingAttack);
 
@@ -312,16 +391,13 @@ public class Battle : MonoBehaviour
         }
         else if (pendingAttack.action == SheepAction.APPEAL)
         {
-            if (enemyHerd.sheep[targetIndex].currentHP <= 0)
-                return;
-
-            // Execute appeal immediately
+            // Execute appeal immediately (as your original code does)
             enemyHerd.Appeal(enemyHerd, targetIndex, source);
-
             string enemyName = enemyHerd.sheep[targetIndex].name;
             battleText.text = $"{source.name} appealed to {enemyName}!";
         }
 
+        // Reset targeting state and restore UI for next action
         pendingAttack = null;
         awaitingTarget = false;
         EnableEnemyButtonsForTargeting(false);
@@ -336,7 +412,14 @@ public class Battle : MonoBehaviour
 
     IEnumerator NextActionPromptDelay()
     {
-        yield return new WaitForSeconds(0.6f);
+        if (transitioning) yield break;
+        transitioning = true;
+
+        // Give the UI a full frame to settle before the next prompt
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForSeconds(0.3f);
+
+        transitioning = false;
         ShowActionPrompt();
     }
 
@@ -348,7 +431,7 @@ public class Battle : MonoBehaviour
         yield return new WaitForSeconds(1f);
 
         List<SheepCommand> allCommands = new List<SheepCommand>(playerCommands);
-        allCommands.AddRange(MockEnemyActions());
+        allCommands.AddRange(EnemyActions());
         allCommands = allCommands.OrderByDescending(c => c.speed).ToList();
 
         foreach (SheepCommand cmd in allCommands)
@@ -387,10 +470,10 @@ public class Battle : MonoBehaviour
 
     bool CheckBattleEnd()
     {
-        bool allEnemiesDown = enemyHerd.AllDown();
+        bool allEnemiesDownOrTamed = enemyHerd.AllUntamedEnemiesDownOrTamed();
         bool allPlayersDown = playerHerd.AllDown();
 
-        if (allEnemiesDown)
+        if (allEnemiesDownOrTamed)
         {
             state = BattleState.WIN;
             battleText.text = "You win!";
@@ -410,10 +493,19 @@ public class Battle : MonoBehaviour
 
     IEnumerator EndBattle()
     {
+        // Add any tamed enemy sheep to persistent player herd
+        foreach (var tamed in enemyHerd.tamedSheep)
+        {
+            GameManager.Instance.AddTamedSheep(tamed);
+        }
+
         yield return new WaitForSeconds(2f);
+
+        // Load world scene
+        SceneManager.LoadScene("WorldScene"); // Replace with your actual world scene name
     }
 
-    List<SheepCommand> MockEnemyActions()
+    List<SheepCommand> EnemyActions()
     {
         List<SheepCommand> cmds = new List<SheepCommand>();
         List<int> aliveEnemies = enemyHerd.GetAliveIndices();
@@ -511,19 +603,36 @@ public class Battle : MonoBehaviour
     {
         if (playerHerd != null)
         {
+            int playerCount = playerHerd.sheep.Count;
             for (int i = 0; i < playerSheep.Length; i++)
             {
-                bool alive = playerHerd.sheep[i].currentHP > 0;
-                playerSheep[i].interactable = alive && state == BattleState.ACT;
+                if (i < playerCount)
+                {
+                    bool alive = playerHerd.sheep[i].currentHP > 0;
+                    playerSheep[i].interactable = alive && state == BattleState.ACT;
+                }
+                else
+                {
+                    // Disable buttons beyond the herd size
+                    playerSheep[i].interactable = false;
+                }
             }
         }
 
         if (enemyHerd != null)
         {
+            int enemyCount = enemyHerd.sheep.Count;
             for (int i = 0; i < enemySheep.Length; i++)
             {
-                bool alive = enemyHerd.sheep[i].currentHP > 0;
-                enemySheep[i].interactable = false;
+                if (i < enemyCount)
+                {
+                    bool alive = enemyHerd.sheep[i].currentHP > 0;
+                    enemySheep[i].interactable = false; // default: not interactable
+                }
+                else
+                {
+                    enemySheep[i].interactable = false; // extra buttons off
+                }
             }
         }
     }
@@ -532,10 +641,18 @@ public class Battle : MonoBehaviour
     {
         if (enemyHerd == null || enemySheep == null) return;
 
-        for (int i = 0; i < enemySheep.Length; i++)
+        int count = Mathf.Min(enemySheep.Length, enemyHerd.sheep.Count);
+
+        for (int i = 0; i < count; i++)
         {
             bool alive = enemyHerd.sheep[i].currentHP > 0;
             enemySheep[i].interactable = enable && alive;
+        }
+
+        // Extra buttons beyond herd size are always disabled
+        for (int i = count; i < enemySheep.Length; i++)
+        {
+            enemySheep[i].interactable = false;
         }
     }
 
@@ -563,18 +680,20 @@ public class Battle : MonoBehaviour
         if (state != BattleState.TAMING)
             return;
 
-        // Roll to tame the enemy sheep
-        bool success = enemyHerd.Tame(enemyHerd, targetIndex); // target is self-contained
+        bool success = enemyHerd.Tame(enemyHerd, targetIndex);
 
         if (success)
             battleText.text = $"You tamed {enemyHerd.sheep[targetIndex].name}!";
         else
             battleText.text = $"{enemyHerd.sheep[targetIndex].name} resisted being tamed!";
 
-        // Disable buttons
         EnableEnemyButtonsForTargeting(false);
 
-        // Wait a moment so the player can read the result
+        // Immediately check for battle end
+        if (CheckBattleEnd())
+            return;
+
+        // Otherwise, proceed to enemy turn
         StartCoroutine(PostTameEnemyTurn());
     }
 
@@ -617,14 +736,19 @@ public class Battle : MonoBehaviour
     IEnumerator FailedFleeDelay()
     {
         yield return new WaitForSeconds(1.5f);
-        state = BattleState.ENEMYTURN;
-        StartCoroutine(EnemyTurn());
+
+        // Only proceed if battle hasn’t ended
+        if (!CheckBattleEnd())
+        {
+            state = BattleState.ENEMYTURN;
+            StartCoroutine(EnemyTurn());
+        }
     }
 
     // Coroutine for enemy actions after a turn-ending action (tame/flee)
     IEnumerator EnemyTurn()
     {
-        List<SheepCommand> enemyActions = MockEnemyActions();
+        List<SheepCommand> enemyActions = EnemyActions();
         enemyActions = enemyActions.OrderByDescending(c => c.speed).ToList();
 
         foreach (var cmd in enemyActions)
