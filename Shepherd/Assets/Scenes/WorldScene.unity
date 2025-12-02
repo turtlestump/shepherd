@@ -148,6 +148,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 847bb0769cedf4d41b1cd440d7f0e60f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerHerd: []
+  campStorage: []
 --- !u!4 &546031406
 Transform:
   m_ObjectHideFlags: 0
@@ -442,13 +444,17 @@ PrefabInstance:
       propertyPath: m_Name
       value: camp_ph
       objectReference: {fileID: 0}
+    - target: {fileID: 3626916397498700004, guid: 636b5cd9478369844aa3fd5885132601, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 7781809152093472672, guid: fba59de979c0dbd43bfdc3ae7ff32d49, type: 3}
     - target: {fileID: 7878350319992209165, guid: 636b5cd9478369844aa3fd5885132601, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.01
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7878350319992209165, guid: 636b5cd9478369844aa3fd5885132601, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -4.62
+      value: -5
       objectReference: {fileID: 0}
     - target: {fileID: 7878350319992209165, guid: 636b5cd9478369844aa3fd5885132601, type: 3}
       propertyPath: m_LocalPosition.z
@@ -532,11 +538,11 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 1.2083334}
+  m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5, y: 0}
-    oldSize: {x: 2.5, y: 2.4166667}
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 3.2733333, y: 2.7}
     newSize: {x: 2.5, y: 2.4166667}
     adaptiveTilingThreshold: 0.5
     drawMode: 0

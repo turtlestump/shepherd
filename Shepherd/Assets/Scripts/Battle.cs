@@ -27,13 +27,18 @@ public class Battle : MonoBehaviour
     public Button[] enemySheep;
     public GameObject[] playerSelections;
     public TMP_Text battleText;
+    public TMP_Text statsText;
+    public TMP_Text infoText;
+    public TMP_InputField nameField;
     public Button actButton;
     public Button itemsButton;
     public Button tameButton;
     public Button fleeButton;
     public Button goButton;
+    public Button confirmButton;
     public GameObject battlePanel;
     public GameObject actPanel;
+    public GameObject summaryPanel;
 
     // Action buttons
     public Button attackButton;
@@ -44,6 +49,10 @@ public class Battle : MonoBehaviour
     private List<int> sheepSelected = new List<int>();
 
     private bool transitioning = false;
+
+    // Summary display
+    private int summaryIndex = 0;
+    private List<Sheep> summarySheep = new List<Sheep>();
 
     // Represents one sheep’s action for the turn
     public class SheepCommand
@@ -238,6 +247,35 @@ public class Battle : MonoBehaviour
         ShowActionPrompt();
     }
 
+    public void OnConfirmButton()
+    {
+        // Safety
+        if (summaryIndex >= summarySheep.Count)
+            return;
+
+        Sheep s = summarySheep[summaryIndex];
+
+        // Apply name if provided
+        if (!string.IsNullOrWhiteSpace(nameField.text))
+            s.name = nameField.text;
+
+        // Now add this sheep to persistent herd
+        GameManager.Instance.AddTamedSheep(s);
+
+        summaryIndex++;
+
+        // If more tamed sheep exist, show next one
+        if (summaryIndex < summarySheep.Count)
+        {
+            ShowSummary();
+        }
+        else
+        {
+            // No more – transition to world scene
+            StartCoroutine(ExitSummary());
+        }
+    }
+
     void ShowActionPrompt()
     {
 
@@ -274,11 +312,11 @@ public class Battle : MonoBehaviour
     }
 
     public void OnAttackButton() => BeginAttackChoice();
-    public void OnDefendButton() => ChooseActionImmediate(SheepAction.DEFEND);
+    public void OnDefendButton() => ChooseAction(SheepAction.DEFEND);
     public void OnAppealButton() => BeginAppealChoice();
 
 
-    void ChooseActionImmediate(SheepAction action)
+    void ChooseAction(SheepAction action)
     {
         if (state != BattleState.CHOOSEACTIONS || awaitingTarget)
             return;
@@ -493,16 +531,55 @@ public class Battle : MonoBehaviour
 
     IEnumerator EndBattle()
     {
-        // Add any tamed enemy sheep to persistent player herd
-        foreach (var tamed in enemyHerd.tamedSheep)
+        // If no sheep were tamed, skip to scene transition
+        if (enemyHerd.tamedSheep.Count == 0)
         {
-            GameManager.Instance.AddTamedSheep(tamed);
+            yield return new WaitForSeconds(1.5f);
+            SceneManager.LoadScene("WorldScene");
+            yield break;
         }
 
-        yield return new WaitForSeconds(2f);
+        // Store tamed sheep locally before adding to GameManager
+        summarySheep = new List<Sheep>(enemyHerd.tamedSheep);
+        summaryIndex = 0;
 
-        // Load world scene
-        SceneManager.LoadScene("WorldScene"); // Replace with your actual world scene name
+        // Hide normal UI
+        battlePanel.SetActive(false);
+        actPanel.SetActive(false);
+
+        // Show summary
+        ShowSummary();
+        summaryPanel.SetActive(true);
+
+        // Wait for player input through confirmButton
+    }
+
+    void ShowSummary()
+    {
+        // Safety
+        if (summaryIndex >= summarySheep.Count)
+            return;
+
+        Sheep s = summarySheep[summaryIndex];
+
+        infoText.text = $"Lv.  {s.level}" +
+            $"\nHP: {s.currentHP} / {s.maxHP}";
+        statsText.text = $"Strength: {s.speed}" +
+            $"\n\nResolve: {s.resolve}" +
+            $"\n\nCharm: {s.charm}" +
+            $"\n\nSpeed: {s.speed}" +
+            $"\n\nSpecial: ";
+
+        nameField.text = ""; // clear input field for naming
+    }
+
+    IEnumerator ExitSummary()
+    {
+        summaryPanel.SetActive(false);
+        battleText.text = "Returning to the world...";
+        yield return new WaitForSeconds(1.5f);
+
+        SceneManager.LoadScene("WorldScene");
     }
 
     List<SheepCommand> EnemyActions()
