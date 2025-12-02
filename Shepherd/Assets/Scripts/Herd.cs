@@ -4,20 +4,18 @@ using UnityEngine;
 
 public class Herd : MonoBehaviour
 {
-    // Your list of Sheep instances
+    // Data lists (editable in inspector if you want)
     public List<Sheep> sheep = new List<Sheep>();
     public List<Sheep> tamedSheep = new List<Sheep>();
 
-    void Awake()
-    {
-        sheep = GetComponentsInChildren<Sheep>().ToList();
-    }
-
-    // Accessor arrays (for HUDs & Battle logic)
+    // Accessor arrays (for HUD & Battle)
     public string[] names => sheep.Select(s => s.name).ToArray();
+    public int[] levels => sheep.Select(s => s.level).ToArray();
     public int[] maxHP => sheep.Select(s => s.maxHP).ToArray();
     public int[] currentHP => sheep.Select(s => s.currentHP).ToArray();
-    public int[] levels => sheep.Select(s => s.level).ToArray();
+    public int[] charm => sheep.Select(s => s.charm).ToArray();
+    public int[] resolve => sheep.Select(s => s.resolve).ToArray();
+    public int[] speed => sheep.Select(s => s.speed).ToArray();
     public int[] damage => sheep.Select(s => GetAttackDamage(s)).ToArray();
 
     public int GetAttackDamage(Sheep s)
@@ -27,8 +25,9 @@ public class Herd : MonoBehaviour
         return Mathf.Max(1, baseDamage + variance);
     }
 
-    public void TakeDamage(int index, int damage)
+    public void TakeDamage(int index, int amount)
     {
+        if (index < 0 || index >= sheep.Count) return;
         Sheep s = sheep[index];
 
         if (s.defending)
@@ -38,20 +37,21 @@ public class Herd : MonoBehaviour
             return;
         }
 
-        s.currentHP = Mathf.Max(0, s.currentHP - damage);
+        s.currentHP = Mathf.Max(0, s.currentHP - amount);
     }
 
     public void Defend(int index)
     {
-        if (index >= 0 && index < sheep.Count)
-        {
-            sheep[index].defending = true;
-            Debug.Log($"{sheep[index].name} is defending!");
-        }
+        if (index < 0 || index >= sheep.Count) return;
+        sheep[index].defending = true;
+        Debug.Log($"{sheep[index].name} is defending!");
     }
 
     public void Appeal(Herd targetHerd, int targetIndex, Sheep source)
     {
+        if (targetHerd == null) return;
+        if (targetIndex < 0 || targetIndex >= targetHerd.sheep.Count) return;
+
         Sheep target = targetHerd.sheep[targetIndex];
         int baseChance = Mathf.Clamp(10 + source.charm * 3 - target.resolve * 2, 5, 95);
         int roll = Random.Range(1, 101);
@@ -59,7 +59,7 @@ public class Herd : MonoBehaviour
         if (roll <= baseChance)
         {
             Debug.Log($"{target.name}'s heart softened... Tame chance increased!");
-            target.resolve = Mathf.Max(1, target.resolve - 1); // easier to tame
+            target.resolve = Mathf.Max(1, target.resolve - 1);
         }
         else
         {
@@ -69,6 +69,9 @@ public class Herd : MonoBehaviour
 
     public bool Tame(Herd targetHerd, int targetIndex)
     {
+        if (targetHerd == null) return false;
+        if (targetIndex < 0 || targetIndex >= targetHerd.sheep.Count) return false;
+
         Sheep target = targetHerd.sheep[targetIndex];
 
         if (target.tamed || target.currentHP <= 0)
@@ -82,7 +85,7 @@ public class Herd : MonoBehaviour
         {
             target.tamed = true;
             target.currentHP = 0;
-            tamedSheep.Add(target);
+            targetHerd.tamedSheep.Add(target);
         }
 
         return success;
@@ -107,17 +110,13 @@ public class Herd : MonoBehaviour
         return sheep.All(s => s.currentHP <= 0 || tamedSheep.Contains(s));
     }
 
-    public Sheep AddSheepFromData(SheepData data)
+    // Duplicate incoming data object so runtime changes won't mutate original GameManager data
+    public Sheep AddSheepFromData(Sheep data)
     {
+        if (data == null) return null;
 
-        Sheep s = new Sheep(data.name, data.level, data.strength, data.resolve, data.charm, data.speed)
-        {
-            maxHP = data.maxHP,
-            currentHP = data.currentHP,
-            tamed = data.tamed
-        };
-        sheep.Add(s);
-        return s;
-
+        Sheep copy = data.Clone();
+        sheep.Add(copy);
+        return copy;
     }
 }

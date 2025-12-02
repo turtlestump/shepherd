@@ -1,10 +1,7 @@
-using System.Collections;
-using UnityEngine;
-
-public class Sheep : MonoBehaviour
+using System;
+[Serializable]
+public class Sheep
 {
-
-    // Basic attributes
     public string name;
     public int level;
 
@@ -13,7 +10,6 @@ public class Sheep : MonoBehaviour
     public int resolve;
     public int charm;
     public int speed;
-    // public int special;
 
     // Battle stats
     public int maxHP;
@@ -22,11 +18,11 @@ public class Sheep : MonoBehaviour
     // Flags
     public bool defending = false;
     public bool tamed = false;
-    
-    // Constructor
+
+    public Sheep() { }
+
     public Sheep(string name, int level, int strength, int resolve, int charm, int speed)
     {
-
         this.name = name;
         this.level = level;
         this.strength = strength;
@@ -37,37 +33,25 @@ public class Sheep : MonoBehaviour
         // Derived stats
         maxHP = 20 + resolve * 2;
         currentHP = maxHP;
-
+        defending = false;
+        tamed = false;
     }
 
-}
-
-public class SheepData
-{
-
-    public string name;
-    public int level;
-    public int strength;
-    public int resolve;
-    public int charm;
-    public int speed;
-    public int maxHP;
-    public int currentHP;
-    public bool tamed;
-
-    public SheepData(Sheep s)
+    // Convenience: clone
+    public Sheep Clone()
     {
-
-        name = s.name;
-        level = s.level;
-        strength = s.strength;
-        resolve = s.resolve;
-        charm = s.charm;
-        speed = s.speed;
-        maxHP = s.maxHP;
-        currentHP = s.currentHP;
-        tamed = s.tamed;
-
+        return new Sheep
+        {
+            name = this.name,
+            level = this.level,
+            strength = this.strength,
+            resolve = this.resolve,
+            charm = this.charm,
+            speed = this.speed,
+            maxHP = this.maxHP,
+            currentHP = this.currentHP,
+            defending = this.defending,
+            tamed = this.tamed
+        };
     }
-
 }

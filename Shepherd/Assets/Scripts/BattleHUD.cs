@@ -4,26 +4,24 @@ using TMPro;
 
 public class BattleHUD : MonoBehaviour
 {
-
     public TMP_Text nameText;
     public TMP_Text levelText;
     public Slider HP;
 
     public void SetHUD(Herd herd, int index)
     {
+        if (herd == null) return;
+        if (index < 0 || index >= herd.sheep.Count) return;
 
         nameText.text = herd.names[index];
-        levelText.text = "<rotate=\"10>Lv. " + herd.levels[index];
+        levelText.text = "Lv. " + herd.levels[index];
         HP.maxValue = herd.maxHP[index];
         HP.value = herd.currentHP[index];
-
     }
 
     public void SetHP(int hp)
     {
-
+        if (HP == null) return;
         HP.value = hp;
-
     }
-
 }
