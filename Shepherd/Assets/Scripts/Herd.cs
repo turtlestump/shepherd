@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Herd : MonoBehaviour
 {
-    // Data lists (editable in inspector if you want)
+    // Data lists
     public List<Sheep> sheep = new List<Sheep>();
     public List<Sheep> tamedSheep = new List<Sheep>();
 
@@ -116,6 +116,8 @@ public class Herd : MonoBehaviour
         if (data == null) return null;
 
         Sheep copy = data.Clone();
+        copy.currentHP = copy.maxHP;
+        copy.tamed = false;
         sheep.Add(copy);
         return copy;
     }

@@ -597,11 +597,18 @@ public class Battle : MonoBehaviour
         for (int i = 0; i < actionsToTake; i++)
         {
             int sheepID = aliveEnemies[i];
+            int chosenPlayerIndex = alivePlayers[Random.Range(0, alivePlayers.Count)];
+
+            // Debug: show chooser + target
+            string enemyName = enemyHerd.sheep[sheepID].name;
+            string targetName = playerHerd.sheep[chosenPlayerIndex].name;
+            Debug.Log($"[EnemyActions] {enemyName} (enemyIndex={sheepID}) selected target {targetName} (playerIndex={chosenPlayerIndex}).");
+
             SheepCommand cmd = new SheepCommand
             {
                 sheepIndex = sheepID,
                 action = SheepAction.ATTACK,
-                targetIndex = alivePlayers[Random.Range(0, alivePlayers.Count)],
+                targetIndex = chosenPlayerIndex,
                 speed = enemyHerd.sheep[sheepID].speed,
                 isPlayer = false
             };
@@ -645,8 +652,22 @@ public class Battle : MonoBehaviour
 
     IEnumerator ExecuteEnemyAction(SheepCommand cmd)
     {
+        // Validate attacker index
+        if (cmd.sheepIndex < 0 || cmd.sheepIndex >= enemyHerd.sheep.Count)
+        {
+            Debug.LogWarning($"ExecuteEnemyAction: invalid attacker index {cmd.sheepIndex}");
+            yield break;
+        }
+
         Sheep attacker = enemyHerd.sheep[cmd.sheepIndex];
         if (attacker.currentHP <= 0) yield break;
+
+        // Validate target index
+        if (cmd.targetIndex < 0 || cmd.targetIndex >= playerHerd.sheep.Count)
+        {
+            Debug.LogWarning($"ExecuteEnemyAction: invalid target index {cmd.targetIndex}");
+            yield break;
+        }
 
         Sheep target = playerHerd.sheep[cmd.targetIndex];
         if (target.currentHP <= 0) yield break;
@@ -655,20 +676,35 @@ public class Battle : MonoBehaviour
         {
             case SheepAction.ATTACK:
                 int damage = enemyHerd.damage[cmd.sheepIndex];
-                if (target.defending)
-                {
-                    damage /= 2;
-                    target.defending = false;
-                }
-                target.currentHP = Mathf.Max(0, target.currentHP - damage);
-                playerHUDS[cmd.targetIndex].SetHP(target.currentHP);
+
+                // Log HP before
+                int beforeHP = target.currentHP;
+
+                // Use Herd.TakeDamage so defending is handled consistently
+                playerHerd.TakeDamage(cmd.targetIndex, damage);
+
+                // Read HP after (TakeDamage may reduce or cancel due to defending)
+                int afterHP = playerHerd.sheep[cmd.targetIndex].currentHP;
+
+                // Update HUD (keep using the index->HUD mapping you have)
+                if (cmd.targetIndex >= 0 && cmd.targetIndex < playerHUDS.Length)
+                    playerHUDS[cmd.targetIndex].SetHP(afterHP);
+
+                // Debug the exact effect
+                Debug.Log($"[EnemyAttack] {attacker.name} (enemyIndex={cmd.sheepIndex}) attacked " +
+                          $"{target.name} (playerIndex={cmd.targetIndex}) for {damage} damage. " +
+                          $"HP: {beforeHP} -> {afterHP}.");
+
                 battleText.text = $"{attacker.name} attacked {target.name}!";
                 break;
 
             case SheepAction.APPEAL:
                 int heal = 5 + attacker.charm / 2;
                 attacker.currentHP = Mathf.Min(attacker.maxHP, attacker.currentHP + heal);
-                enemyHUDS[cmd.sheepIndex].SetHP(attacker.currentHP);
+                if (cmd.sheepIndex >= 0 && cmd.sheepIndex < enemyHUDS.Length)
+                    enemyHUDS[cmd.sheepIndex].SetHP(attacker.currentHP);
+
+                Debug.Log($"[EnemyAppeal] {attacker.name} healed for {heal}. HP is now {attacker.currentHP}.");
                 break;
         }
 

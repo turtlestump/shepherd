@@ -35,16 +35,19 @@ public class GameManager : MonoBehaviour
     {
         if (newSheep == null) return;
 
+        Sheep copy = newSheep.Clone();
+        copy.currentHP = copy.maxHP;
+
         const int MaxPlayerHerd = 5;
 
         if (playerHerd.Count < MaxPlayerHerd)
         {
-            playerHerd.Add(newSheep.Clone());
+            playerHerd.Add(copy);
             Debug.Log($"Added {newSheep.name} to player herd.");
         }
         else
         {
-            campStorage.Add(newSheep.Clone());
+            campStorage.Add(copy);
             Debug.Log($"Player herd full. Stored {newSheep.name} in camp.");
         }
     }
