@@ -14,7 +14,7 @@ public class BattleHUD : MonoBehaviour
         if (index < 0 || index >= herd.sheep.Count) return;
 
         nameText.text = herd.names[index];
-        levelText.text = "<rotate=\"10>Lv. " + herd.levels[index];
+        levelText.text = $"<rotate=\"10\">Lv. {herd.levels[index]}</rotate>";
         HP.maxValue = herd.maxHP[index];
         HP.value = herd.currentHP[index];
     }

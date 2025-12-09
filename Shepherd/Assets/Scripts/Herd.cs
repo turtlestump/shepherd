@@ -17,6 +17,8 @@ public class Herd : MonoBehaviour
     public int[] resolve => sheep.Select(s => s.resolve).ToArray();
     public int[] speed => sheep.Select(s => s.speed).ToArray();
     public int[] damage => sheep.Select(s => GetAttackDamage(s)).ToArray();
+    public System.Action<Sheep> SheepFelledEvent;
+
 
     public int GetAttackDamage(Sheep s)
     {
@@ -38,6 +40,19 @@ public class Herd : MonoBehaviour
         }
 
         s.currentHP = Mathf.Max(0, s.currentHP - amount);
+
+        bool died = (sheep[index].currentHP <= 0);
+        if (died)
+        {
+            sheep[index].currentHP = 0;
+            OnSheepFelled(index);
+        }
+    }
+
+    void OnSheepFelled(int index)
+    {
+        if (SheepFelledEvent != null)
+            SheepFelledEvent.Invoke(sheep[index]);
     }
 
     public void Defend(int index)
@@ -89,6 +104,27 @@ public class Herd : MonoBehaviour
         }
 
         return success;
+    }
+
+
+    public void LevelUp(int index, int xpGained)
+    {
+
+        if (index < 0 || index >= sheep.Count) return;
+        Sheep s = sheep[index];
+
+        s.level++;
+
+    }
+
+    public int GetXP(int index)
+    {
+
+        if (index < 0 || index >= sheep.Count) return -1;
+        Sheep s = sheep[index];
+
+        return 3 * (s.charm + s.speed + s.strength + s.resolve);
+
     }
 
     public List<int> GetAliveIndices()

@@ -14,6 +14,15 @@ public class Sheep
     // Battle stats
     public int maxHP;
     public int currentHP;
+    public int xp;
+    public int xpToNextLevel
+    {
+        get
+        {
+            int statSum = strength + resolve + charm + speed;
+            return statSum;
+        }
+    }
 
     // Flags
     public bool defending = false;
@@ -37,7 +46,6 @@ public class Sheep
         tamed = false;
     }
 
-    // Convenience: clone
     public Sheep Clone()
     {
         return new Sheep
@@ -53,5 +61,33 @@ public class Sheep
             defending = this.defending,
             tamed = this.tamed
         };
+    }
+
+    public bool AddXP(int amount)
+    {
+        xp += amount;
+        bool leveledUp = false;
+
+        while (xp >= xpToNextLevel)
+        {
+            xp -= xpToNextLevel;
+            LevelUp();
+            leveledUp = true;
+        }
+
+        return leveledUp;
+    }
+
+    void LevelUp()
+    {
+        level++;
+
+        strength += 1;
+        resolve += 1;
+        charm += 1;
+        speed += 1;
+
+        maxHP = 20 + resolve * 2;
+        currentHP = maxHP;
     }
 }

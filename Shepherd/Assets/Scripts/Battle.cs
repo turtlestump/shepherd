@@ -6,6 +6,7 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using System.Linq;
 using UnityEngine.InputSystem;
+using System.Xml.XPath;
 
 public enum BattleState { START, PLAYERTURN, ACT, CHOOSEACTIONS, TAMING, RESOLVE, ENEMYTURN, WIN, LOSE }
 public enum SheepAction { NONE, ATTACK, DEFEND, APPEAL }
@@ -70,6 +71,9 @@ public class Battle : MonoBehaviour
     // Target selection helpers
     private bool awaitingTarget = false;
     private SheepCommand pendingAttack = null;
+
+    // Represents total xp earned in battle
+    private int xpTotal;
 
     void Start()
     {
@@ -136,6 +140,8 @@ public class Battle : MonoBehaviour
             if (active)
                 enemyHUDS[i].SetHUD(enemyHerd, i);
         }
+
+        enemyHerd.SheepFelledEvent += OnEnemyFell;
 
         RefreshSheepButtons();
         yield return new WaitForSeconds(1f);
@@ -874,5 +880,46 @@ public class Battle : MonoBehaviour
         state = BattleState.PLAYERTURN;
         battlePanel.SetActive(true);
         PlayerTurn();
+    }
+
+    void OnEnemyFell(Sheep s)
+    {
+        AwardXPToSide(playerHerd, s);
+    }
+
+    void AwardXPToSide(Herd recipients, Sheep fallen)
+    {
+        int statSum = fallen.strength + fallen.resolve + fallen.charm + fallen.speed;
+        int xpGain = 4 * statSum;
+
+        foreach (var sheep in recipients.sheep)
+        {
+            if (sheep.currentHP <= 0) continue; // fainted sheep don’t get XP
+
+            bool leveled = sheep.AddXP(xpGain);
+
+            if (leveled)
+            {
+                battleText.text = $"{sheep.name} leveled up to Lv. {sheep.level}!";
+                UpdateHUDForSheep(recipients, sheep);
+            }
+        }
+    }
+
+    void UpdateHUDForSheep(Herd herd, Sheep s)
+    {
+        int index = herd.sheep.IndexOf(s);
+
+        if (herd == playerHerd)
+        {
+            playerHUDS[index].SetHUD(herd, index);
+        }
+        else if (herd == enemyHerd)
+        {
+            enemyHUDS[index].SetHUD(herd, index);
+        }
+
+        Debug.Log("Level: " + s.level);
+
     }
 }
