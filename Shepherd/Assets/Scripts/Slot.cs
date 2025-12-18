@@ -1,7 +1,13 @@
 using UnityEngine;
+public enum SlotType
+{
+    Party,
+    Storage
+}
 
 public class Slot : MonoBehaviour
 {
-    public GameObject currentSheep; // The sheep stored in this slot
+    public SlotType slotType;
+    public GameObject currentSheep;
     public Sheep sheepData;
 }

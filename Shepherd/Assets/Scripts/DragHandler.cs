@@ -30,6 +30,7 @@ public class DragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
 
     public void OnEndDrag(PointerEventData eventData)
     {
+
         canvasGroup.blocksRaycasts = true;   // Clickable again
         canvasGroup.alpha = 1f;
 
@@ -50,19 +51,21 @@ public class DragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
 
         Slot originalSlot = originalParent.GetComponent<Slot>();
 
+        // Cache sheep BEFORE changing anything
+        Sheep movingSheep = sheepIcon.sheepData;
+        Sheep targetSheep = dropSlot != null ? dropSlot.sheepData : null;
+
         if (dropSlot != null)
         {
+            // --- VISUAL SWAP ---
             if (dropSlot.currentSheep != null)
             {
-
-                // Swap items
+                // Move target sheep back to original slot
                 dropSlot.currentSheep.transform.SetParent(originalSlot.transform);
-                originalSlot.currentSheep = dropSlot.currentSheep;
                 dropSlot.currentSheep.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
 
-                SheepIcon swappedIcon = dropSlot.currentSheep.GetComponent<SheepIcon>();
-                originalSlot.sheepData = swappedIcon.sheepData;
-
+                originalSlot.currentSheep = dropSlot.currentSheep;
+                originalSlot.sheepData = targetSheep;
             }
             else
             {
@@ -70,27 +73,59 @@ public class DragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
                 originalSlot.sheepData = null;
             }
 
-            // Move item into drop slot
+            // Move dragged sheep into drop slot
             transform.SetParent(dropSlot.transform);
-            dropSlot.currentSheep = gameObject;
+            GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
 
-            dropSlot.sheepData = sheepIcon.sheepData;
+            dropSlot.currentSheep = gameObject;
+            dropSlot.sheepData = movingSheep;
+
+            // --- DATA UPDATE ---
+            UpdateGameManagerData(originalSlot, dropSlot, movingSheep, targetSheep);
         }
         else
         {
+            // Invalid drop - snap back
             transform.SetParent(originalParent);
-            originalSlot.currentSheep = gameObject;
-
-            originalSlot.sheepData = sheepIcon.sheepData;
+            GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
         }
 
-        GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
+        SheepIcon.OnSheepSelected?.Invoke(movingSheep);
 
     }
-
-    // Update is called once per frame
-    void Update()
+    void UpdateGameManagerData(
+    Slot from,
+    Slot to,
+    Sheep movingSheep,
+    Sheep swappedSheep
+)
     {
-        
+        var gm = GameManager.Instance;
+
+        // Remove moving sheep from its original list
+        if (from.slotType == SlotType.Party)
+            gm.playerHerd.Remove(movingSheep);
+        else
+            gm.campStorage.Remove(movingSheep);
+
+        // Add moving sheep to destination list
+        if (to.slotType == SlotType.Party)
+            gm.playerHerd.Add(movingSheep);
+        else
+            gm.campStorage.Add(movingSheep);
+
+        // If this was a swap, move the other sheep back
+        if (swappedSheep != null)
+        {
+            if (to.slotType == SlotType.Party)
+                gm.playerHerd.Remove(swappedSheep);
+            else
+                gm.campStorage.Remove(swappedSheep);
+
+            if (from.slotType == SlotType.Party)
+                gm.playerHerd.Add(swappedSheep);
+            else
+                gm.campStorage.Add(swappedSheep);
+        }
     }
 }

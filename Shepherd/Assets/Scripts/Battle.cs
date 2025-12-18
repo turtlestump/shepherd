@@ -72,9 +72,6 @@ public class Battle : MonoBehaviour
     private bool awaitingTarget = false;
     private SheepCommand pendingAttack = null;
 
-    // Represents total xp earned in battle
-    private int xpTotal;
-
     void Start()
     {
         state = BattleState.START;
