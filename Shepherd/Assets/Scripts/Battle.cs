@@ -468,7 +468,7 @@ public class Battle : MonoBehaviour
     {
         EnableEnemyButtonsForTargeting(false);
         actPanel.SetActive(false);
-        battleText.text = "Executing actions...";
+        battleText.text = "";
         yield return new WaitForSeconds(1f);
 
         List<SheepCommand> allCommands = new List<SheepCommand>(playerCommands);
